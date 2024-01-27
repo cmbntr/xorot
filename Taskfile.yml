@@ -1,0 +1,23 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  PROJECT: xorot
+  OPTIMIZE: ReleaseSmall
+
+tasks:
+  default:
+    cmds:
+      - cmd: |
+          zig build install -Doptimize={{.OPTIMIZE}} -Dtarget={{.ITEM}} -p release/{{.PROJECT}}-{{.ITEM}}
+          cd release && zip -r {{.PROJECT}}-{{.ITEM}}.zip {{.PROJECT}}-{{.ITEM}}/
+
+        for:
+        - x86_64-linux-musl
+        - aarch64-linux-musl
+        - x86_64-windows-msvc
+        - wasm32-wasi-none
+        - x86_64-macos
+        - aarch64-macos
+
