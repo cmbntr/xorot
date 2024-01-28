@@ -8,7 +8,7 @@ pub fn main() !void {
 }
 
 fn xorot(in: std.fs.File.Reader, out: std.fs.File.Writer) !void {
-    var idx: u8 = 0;
+    var idx: u8 = 0b10101010;
     var buffer: [8192]u8 = undefined;
 
     while (true) {
