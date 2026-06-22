@@ -23,6 +23,11 @@ tasks:
           - x86_64-macos
           - aarch64-macos
 
+  clean:
+    desc: "Remove generated Zig build/test artefacts"
+    cmds:
+      - rm -rf .zig-cache zig-cache zig-out release
+
   test:
     desc: "Run normal Zig tests"
     cmds:
