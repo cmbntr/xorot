@@ -1,18 +1,19 @@
 const std = @import("std");
-const io = std.io;
 
-pub fn main() !void {
-    const stdin = io.getStdIn().reader();
-    const stdout = io.getStdOut().writer();
-    try xorot(stdin, stdout);
+pub fn main(init: std.process.Init) !void {
+    var stdin_reader = std.Io.File.stdin().reader(init.io, &.{});
+    var stdout_writer = std.Io.File.stdout().writer(init.io, &.{});
+
+    try xorot(&stdin_reader.interface, &stdout_writer.interface);
+    try stdout_writer.flush();
 }
 
-fn xorot(in: std.fs.File.Reader, out: std.fs.File.Writer) !void {
+fn xorot(in: *std.Io.Reader, out: *std.Io.Writer) !void {
     var idx: u8 = 0b10101010;
     var buffer: [8192]u8 = undefined;
 
     while (true) {
-        const cnt = try in.read(&buffer);
+        const cnt = try in.readSliceShort(&buffer);
         if (cnt == 0) break;
 
         for (0..cnt) |i| {

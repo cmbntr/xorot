@@ -71,38 +71,42 @@
         "webfetch": "allow",
         "read": "allow",
         "external_directory": {
-          "*": "ask"
-        }
-      }
-    }
+          "*": "ask",
+        },
+      },
+    },
   },
   "snapshot": true,
   "permission": {
     "lsp": "allow",
     "websearch": "ask",
     "external_directory": {
-      "/ram/**": "ask"
+      "/ram/**": "ask",
     },
     "bash": {
       "git checkout *": "ask",
       "git clean *": "ask",
       "git push *": "ask",
       "git reset *": "ask",
-      "rm -rf *": "ask"
-    }
+      "rm -rf *": "ask",
+    },
   },
   "formatter": {
     "prettier": {
-      "disabled": true
+      "disabled": true,
     },
     "uv format": {
-      "disabled": true
+      "disabled": true,
+    },
+    "zig_fmt": {
+      "command": ["zig", "fmt", "$FILE"],
+      "extensions": [".zig", ".zon"],
     },
     "dprint": {
       "command": [
         "bun x dprint",
         "fmt",
-        "$FILE"
+        "$FILE",
       ],
       "extensions": [
         ".js",
@@ -118,66 +122,41 @@
         ".yml",
         ".md",
         "Dockerfile",
-      ]
-    }
+      ],
+    },
   },
   "plugin": [
     // "opencode-beads@latest"
   ],
   "lsp": {
-    "typescript": {
+    "zls": {
       "disabled": false,
+      "extensions": [".zig", ".zon"],
+      "command": ["zls"],
+    },
+    "typescript": {
+      "disabled": true,
       "extensions": [
         ".ts",
-        ".tsx"
+        ".tsx",
       ],
       "command": [
         "typescript-language-server",
         "--stdio",
         "--log-level",
-        "4"
-      ]
-    }
+        "4",
+      ],
+    },
   },
   "mcp": {
-    "linear": {
-      "enabled": false,
-      "type": "remote",
-      "url": "https://mcp.linear.app/sse",
-      "oauth": {}
-    },
     "oreilly": { // https://learning.oreilly.com/apidocs/mcp/content/#section/Connection-Configuration
       "enabled": false,
       "type": "remote",
       "url": "https://api.oreilly.com/api/content-discovery/v1/mcp/",
       "oauth": false,
       "headers": {
-        "Authorization": "Bearer {env:OREILLY_MCP_TOKEN}"
-      }
-    },
-    "memory": {
-      "enabled": false,
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "LIBSQL_URL=file://$(pwd)/mcpmem.db exec bun x mcp-memory-libsql"
-      ],
-      "environment": {
-        "NODE_ENV": "production"
-      }
-    },
-    "libsql": {
-      "enabled": false,
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec bun x @xexr/mcp-libsql --url file://$(pwd)/app.db"
-      ],
-      "environment": {
-        "NODE_ENV": "production"
-      }
+        "Authorization": "Bearer {env:OREILLY_MCP_TOKEN}",
+      },
     },
     "mermaid": {
       "enabled": false,
@@ -185,45 +164,15 @@
       "command": [
         "sh",
         "-c",
-        "exec bun x mcp-mermaid"
+        "exec bun x mcp-mermaid",
       ],
       "environment": {
-        "NODE_ENV": "production"
-      }
+        "NODE_ENV": "production",
+      },
     },
-    "effect-docs": {
-      "enabled": false,
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec podman run -i --rm --pull newer docker.io/timsmart/effect-mcp"
-      ]
-    },
-    "filesystem--ram": {
-      "enabled": false,
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec bun x @modelcontextprotocol/server-filesystem /ram"
-      ]
-    },
-    "taskmaster": {
-      "enabled": false,
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec bun x -p task-master-ai@latest task-master-ai"
-      ],
-      "environment": {
-        "TASK_MASTER_TOOLS": "standard", // Options: "all", "standard", "core", "lean", or comma-separated list
-      }
-    }
   },
   "share": "disabled",
   "experimental": {
-    "openTelemetry": true
-  }
+    "openTelemetry": true,
+  },
 }

@@ -23,6 +23,11 @@ tasks:
           - x86_64-macos
           - aarch64-macos
 
+  test:smoke:
+    desc: "Smoke test stdin-to-stdout transform"
+    cmds:
+      - test "$(printf 'Ab0' | zig build run | xxd -p)" = "e4c499"
+
   fmt:
     desc: "Formats the code"
     dir: "{{.ROOT_DIR}}"
