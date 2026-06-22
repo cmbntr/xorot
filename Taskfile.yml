@@ -38,10 +38,34 @@ tasks:
     cmds:
       - test "$(printf 'Ab0' | zig build run | xxd -p)" = "e4c499"
 
+  test:wasi:
+    desc: "Smoke test prebuilt WASI artifact with wasmtime; skips if missing"
+    cmds:
+      - cmd: |
+          wasm=release/{{.PROJECT}}-wasm32-wasi-none/bin/{{.PROJECT}}.wasm
+          if [ ! -f "$wasm" ]; then
+            echo "skip: missing $wasm; run 'task build' first"
+            exit 0
+          fi
+          test "$(printf 'Ab0' | wasmtime run "$wasm" | xxd -p)" = "e4c499"
+
+          tmpdir=$(mktemp -d)
+          trap 'rm -rf "$tmpdir"' EXIT
+          input="$tmpdir/input.bin"
+          orig="$tmpdir/orig.bin"
+
+          head -c 4096 /dev/urandom > "$input"
+          cp "$input" "$orig"
+
+          wasmtime run --dir "$tmpdir"::. "$wasm" -i input.bin
+          wasmtime run --dir "$tmpdir"::. "$wasm" -i input.bin
+          cmp -s "$input" "$orig"
+
   test:full:
     desc: "Run all tests"
     cmds:
       - task: test:smoke
+      - task: test:wasi
       - task: test
       - zig build fuzz-test -Dxorot_fuzz_iterations=2048
 

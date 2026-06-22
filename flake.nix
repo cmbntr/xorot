@@ -25,6 +25,7 @@
           libarchive
           bun
           nodejs
+          wasmtime
         ];
 
         shellHook = ''
