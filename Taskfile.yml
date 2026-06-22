@@ -23,6 +23,35 @@ tasks:
           - x86_64-macos
           - aarch64-macos
 
+  fmt:
+    desc: "Formats the code"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - bun x dprint fmt {{.CLI_ARGS}}
+
+  fmt:update:force:
+    desc: "Updates the formatter plugins (clears the cache first)"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - bun x dprint clear-cache {{.CLI_ARGS}}
+      - task fmt:update
+
+  fmt:update:
+    desc: "Updates the formatter plugins"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - bun x dprint config add typescript
+      - bun x dprint config add g-plane/markup_fmt
+      - bun x dprint config add g-plane/malva
+      - bun x dprint config add json
+      - bun x dprint config add toml
+      - bun x dprint config add markdown
+      - bun x dprint config add dockerfile
+      - bun x dprint config add g-plane/pretty_yaml
+      # - bun x dprint config add ruff
+      # - bun x dprint config add sql
+      # - bun x dprint config add "https://github.com/mridang/dprint-go/releases/download/v1.4.0/shfmt.wasm"
+
   fmt:nix:
     desc: "Formats nix files"
     dir: "{{.ROOT_DIR}}"

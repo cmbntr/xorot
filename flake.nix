@@ -15,6 +15,7 @@
           zig_0_16
           zls_0_16
           alejandra
+          dprint
           git
           rtk
           pass

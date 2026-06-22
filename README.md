@@ -14,6 +14,7 @@
 ## Example
 
 ### "Encode"
+
 ```
 echo SECRET |
 age -R <(curl -s https://github.com/cmbntr.keys) |
@@ -21,6 +22,7 @@ xorot > data.age.xorot
 ```
 
 ### "Decode"
+
 ```
 xorot < data.age.xorot | age -d -i ~/.ssh/id_ed25519
 ```
