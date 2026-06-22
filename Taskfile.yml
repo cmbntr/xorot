@@ -7,7 +7,9 @@ vars:
   OPENSPEC_VERSION: "1.4.1"
 
 tasks:
-  default:
+  build:
+    aliases:
+      - default
     cmds:
       - cmd: |
           zig build install -Doptimize={{.OPTIMIZE}} -Dtarget={{.ITEM}} -p release/{{.PROJECT}}-{{.ITEM}}
