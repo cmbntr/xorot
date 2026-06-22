@@ -12,27 +12,24 @@
       default = pkgs.mkShell {
         packages = with pkgs; [
           go-task
-          zip
-          zig_0_13
-          zls_0_14
+          zig_0_16
+          zls_0_16
           alejandra
           git
           rtk
           pass
           fd
           ripgrep
+          zip
           libarchive
-          #flyctl
-          #uv ty ruff
-          #sqlite
-          #corepack
-          #deno
-          #nodejs
+          bun
+          nodejs
         ];
 
         shellHook = ''
           echo "Welcome to the xorot development environment!"
-          echo "Zig: $(zig version)"
+          echo "zig: $(zig version)"
+          echo "zls: $(zls version)"
           echo ""
         '';
       };
