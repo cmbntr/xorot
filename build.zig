@@ -14,6 +14,10 @@ pub fn build(b: *std.Build) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
+    const xorot_fuzz_iterations = b.option(usize, "xorot_fuzz_iterations", "Generated-input iterations for xorot fuzz-style tests") orelse 32;
+
+    const options = b.addOptions();
+    options.addOption(usize, "xorot_fuzz_iterations", xorot_fuzz_iterations);
 
     const exe = b.addExecutable(.{
         .name = "xorot",
@@ -25,6 +29,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    exe.root_module.addOptions("build_options", options);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -63,6 +68,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    unit_tests.root_module.addOptions("build_options", options);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
@@ -71,4 +77,19 @@ pub fn build(b: *std.Build) void {
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
+
+    const fuzz_options = b.addOptions();
+    fuzz_options.addOption(usize, "xorot_fuzz_iterations", xorot_fuzz_iterations);
+    const fuzz_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    fuzz_tests.root_module.addOptions("build_options", fuzz_options);
+
+    const run_fuzz_tests = b.addRunArtifact(fuzz_tests);
+    const fuzz_test_step = b.step("fuzz-test", "Run fuzz-style generated-input tests");
+    fuzz_test_step.dependOn(&run_fuzz_tests.step);
 }

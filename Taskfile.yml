@@ -23,10 +23,22 @@ tasks:
           - x86_64-macos
           - aarch64-macos
 
+  test:
+    desc: "Run normal Zig tests"
+    cmds:
+      - zig build test
+
   test:smoke:
     desc: "Smoke test stdin-to-stdout transform"
     cmds:
       - test "$(printf 'Ab0' | zig build run | xxd -p)" = "e4c499"
+
+  test:full:
+    desc: "Run all tests"
+    cmds:
+      - task: test:smoke
+      - task: test
+      - zig build fuzz-test -Dxorot_fuzz_iterations=2048
 
   fmt:
     desc: "Formats the code"
