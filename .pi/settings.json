@@ -1,0 +1,29 @@
+{
+    "defaultProvider": "openai",
+    "defaultModel": "gpt-5.4",
+    "defaultThinkingLevel": "low",
+    "retry": {
+        "enabled": true,
+        "maxRetries": 2
+    },
+    "enabledModels": [
+        "gpt-5.5",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.4-nano",
+        "claude-fable-5",
+        "claude-opus-4-8",
+        "claude-sonnet-4-6",
+        "gpt-oss-120b:free",
+        "gemma-4-31b-it:free",
+        "nvidia/nemotron-3-super-120b-a12b:free"
+    ],
+    "warnings": {
+        "anthropicExtraUsage": true
+    },
+    "enableInstallTelemetry": false,
+    "enableAnalytics": false,
+    "packages": [
+        "pi-skills"
+    ]
+}

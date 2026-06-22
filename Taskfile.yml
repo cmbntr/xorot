@@ -1,10 +1,10 @@
-# https://taskfile.dev
-
-version: '3'
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
 
 vars:
   PROJECT: xorot
   OPTIMIZE: ReleaseSmall
+  OPENSPEC_VERSION: "1.4.1"
 
 tasks:
   default:
@@ -14,10 +14,202 @@ tasks:
           cd release && zip -r {{.PROJECT}}-{{.ITEM}}.zip {{.PROJECT}}-{{.ITEM}}/
 
         for:
-        - x86_64-linux-musl
-        - aarch64-linux-musl
-        - x86_64-windows-msvc
-        - wasm32-wasi-none
-        - x86_64-macos
-        - aarch64-macos
+          - x86_64-linux-musl
+          - aarch64-linux-musl
+          - x86_64-windows-msvc
+          - wasm32-wasi-none
+          - x86_64-macos
+          - aarch64-macos
 
+  fmt:nix:
+    desc: "Formats nix files"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - alejandra {{.CLI_ARGS | default "."}}
+
+  flake:update:
+    desc: "Updates flake.lock"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - nix flake update --refresh {{.CLI_ARGS}}
+
+  flake:check:
+    desc: "Check flake.lock"
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - nix-shell -p flake-checker --command "flake-checker {{.CLI_ARGS}}"
+
+  ai:openspec:
+    desc: "Run openspec CLI (https://github.com/Fission-AI/OpenSpec)"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    silent: true
+    aliases:
+      - spec
+    env:
+      CODEX_HOME: "{{.ROOT_DIR}}/.codex"
+      OPENCODE_CONFIG_DIR: "{{.ROOT_DIR}}/.opencode"
+      PI_CODING_AGENT_DIR: "{{.ROOT_DIR}}/.pi/home"
+    cmds:
+      - bun x --silent --bun --package @fission-ai/openspec@{{.OPENSPEC_VERSION}} openspec {{.CLI_ARGS | default "view"}}
+
+  ai:openspec:glow:
+    desc: "View openspec artefacts"
+    dir: "{{.ROOT_DIR}}/openspec"
+    interactive: true
+    cmds:
+      - glow --all --tui --line-numbers "$( { printf '%s\n' project.md; find specs changes -mindepth 1 -maxdepth 1 -type d ! -path 'changes/archive*' -print; } | fzf -1 -0 -q '{{.CLI_ARGS}}' --prompt='View > ' --header=$'What do you want to view?')"
+
+  ai:openspec:render:
+    desc: "Render selected OpenSpec artefacts into one markdown artifact"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    cmds:
+      - bb openspec/openspec-render.bb pick {{.CLI_ARGS}}
+    env:
+      OPENSPEC_TASK: "ai:openspec"
+      __MD_VIEWER: "glow"
+
+  ai:openspec:render:all:
+    desc: "Render all OpenSpec changes and specs into one markdown artifact"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    cmds:
+      - bb openspec/openspec-render.bb all
+    env:
+      OPENSPEC_TASK: "ai:openspec"
+      __MD_VIEWER: "glow"
+
+  ai:openspec:render:changes:
+    desc: "Render regex-matched OpenSpec changes into one markdown artifact"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    cmds:
+      - bb openspec/openspec-render.bb changes {{.CLI_ARGS}}
+    env:
+      OPENSPEC_TASK: "ai:openspec"
+      __MD_VIEWER: "glow"
+
+  ai:openspec:render:specs:
+    desc: "Render regex-matched OpenSpec specs into one markdown artifact"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    cmds:
+      - bb openspec/openspec-render.bb specs {{.CLI_ARGS}}
+    env:
+      OPENSPEC_TASK: "ai:openspec"
+      __MD_VIEWER: "glow"
+
+  ai:openspec:init:
+    desc: "Run openspec init (https://github.com/Fission-AI/OpenSpec)"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    env:
+      CODEX_HOME: "{{.ROOT_DIR}}/.codex"
+      OPENCODE_CONFIG_DIR: "{{.ROOT_DIR}}/.opencode"
+      PI_CODING_AGENT_DIR: "{{.ROOT_DIR}}/.pi/home"
+    cmds:
+      - bun x --bun @fission-ai/openspec@{{.OPENSPEC_VERSION}} init --tools opencode,pi {{.CLI_ARGS}}
+
+  ai:pi:
+    desc: "Start pi (https://pi.dev/)"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    aliases:
+      - pi
+    vars:
+      EXTRA_ARGS: "{{.EXTRA_ARGS | default .CLI_ARGS}}"
+    env:
+      PI_CODING_AGENT_DIR: "{{.ROOT_DIR}}/.pi/home"
+      PI_CODING_AGENT_SESSION_DIR: "{{.ROOT_DIR}}/.pi/sessions"
+      PI_OFFLINE: "1"
+      PI_TELEMETRY: "0"
+      PI_SKIP_VERSION_CHECK: "1"
+      RTK_TELEMETRY_DISABLED: "1"
+      OTEL_SERVICE_NAME: "opencode"
+      OTEL_TRACES_EXPORTER: "otlp"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
+    cmds:
+      - touch AGENTS.md
+      - nix-shell --option tarball-ttl "${NIX_TTL:-86400}" --impure -p typescript-language-server -p bun --command "bun x --bun \"@earendil-works/pi-coding-agent${BUNX_VERSION-"@latest"}\" {{.EXTRA_ARGS}}"
+
+  ai:pi:models:
+    desc: "List pi models"
+    cmds:
+      - task: ai:pi
+        vars:
+          EXTRA_ARGS: "--list-models"
+
+  ai:opencode:
+    desc: "Start OpenCode (https://opencode.ai/)"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    aliases:
+      - oco
+    vars:
+      EXTRA_ARGS: "{{.EXTRA_ARGS | default .CLI_ARGS}}"
+    env:
+      OPENAI_API_KEY: "sk-none"
+      OPENAI_BASE_URL: "http://aiproxy.unicorn-tegu.ts.net/v1"
+      OPENCODE_CONFIG_DIR: "{{.ROOT_DIR}}/.opencode"
+      OPENCODE_DISABLE_CLAUDE_CODE: "true"
+      OPENCODE_DISABLE_LSP_DOWNLOAD: "true"
+      OPENCODE_ENABLE_QUESTION_TOOL: "true"
+      OPENCODE_EXPERIMENTAL_WORKSPACES: "false"
+      OPENCODE_EXPERIMENTAL_LSP_TOOL: "true"
+      OPENCODE_EXPERIMENTAL_SCOUT: "false"
+      RTK_TELEMETRY_DISABLED: "1"
+      OTEL_SERVICE_NAME: "opencode"
+      OTEL_TRACES_EXPORTER: "otlp"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318"
+    cmds:
+      - touch AGENTS.md
+      - nix-shell --option tarball-ttl "${NIX_TTL:-86400}" --impure -p typescript-language-server -p bun --command "bun x --bun \"opencode-ai${BUNX_VERSION-"@latest"}\" {{.EXTRA_ARGS}}"
+      # - bun x --bun \"opencode-ai${BUNX_VERSION-"@latest"}\" {{.CLI_ARGS}}
+
+  ai:opencode:models:
+    desc: "List OpenCode models"
+    cmds:
+      - task: ai:opencode
+        vars:
+          EXTRA_ARGS: "models"
+
+  ai:opencode:agents:
+    desc: "List OpenCode agents"
+    cmds:
+      - task: ai:opencode
+        vars:
+          EXTRA_ARGS: "agent list"
+
+  ai:rtk:
+    desc: "Run rtk (https://github.com/rtk-ai/rtk)"
+    dir: "{{.ROOT_DIR}}"
+    aliases:
+      - rtk
+    env:
+      CODEX_HOME: "{{.ROOT_DIR}}/.codex"
+      OPENCODE_CONFIG_DIR: "{{.ROOT_DIR}}/.opencode"
+      PI_CODING_AGENT_DIR: "{{.ROOT_DIR}}/.pi/home"
+      RTK_TELEMETRY_DISABLED: "1"
+    cmds:
+      - rtk {{.CLI_ARGS | default "gain"}}
+
+  ai:skills:
+    desc: "Start skills cli (https://github.com/vercel-labs/skills)"
+    dir: "{{.ROOT_DIR}}"
+    interactive: true
+    vars:
+      EXTRA_ARGS: "{{.EXTRA_ARGS | default .CLI_ARGS}}"
+    env:
+      CODEX_HOME: "{{.ROOT_DIR}}/.codex"
+      OPENCODE_CONFIG_DIR: "{{.ROOT_DIR}}/.opencode"
+      PI_CODING_AGENT_DIR: "{{.ROOT_DIR}}/.pi/home"
+    cmds:
+      - nix-shell --option tarball-ttl "${NIX_TTL:-86400}" --impure -p typescript-language-server -p bun --command "bun x --bun \"skills${BUNX_VERSION-"@latest"}\" {{.EXTRA_ARGS}}"
+
+  ai:mcp:inspector:
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - bun x @modelcontextprotocol/inspector {{.CLI_ARGS}}
