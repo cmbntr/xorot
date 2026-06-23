@@ -1,7 +1,7 @@
 const std = @import("std");
 const build_options = @import("build_options");
 
-const buffer_size = 8192;
+const buffer_size = 64 * 1024;
 const suffix = ".xorot";
 
 const ExitCode = enum(u8) {
@@ -114,7 +114,7 @@ fn processOutput(allocator: std.mem.Allocator, io: std.Io, src_path: []const u8,
 }
 
 fn processOutputNoReport(io: std.Io, src_path: []const u8, dst_path: []const u8, force: bool) ProcessResult {
-    var src = std.Io.Dir.cwd().openFile(io, src_path, .{}) catch return .{ .cnt = 0, .code = .source };
+    var src = std.Io.Dir.cwd().openFile(io, src_path, .{ .mode = .read_only, .allow_directory = false }) catch return .{ .cnt = 0, .code = .source };
     defer src.close(io);
     const stat = src.stat(io) catch return .{ .cnt = 0, .code = .source };
 
@@ -152,9 +152,9 @@ fn processInPlace(io: std.Io, path: []const u8, silent: bool) !ProcessResult {
 }
 
 fn processInPlaceNoReport(io: std.Io, path: []const u8) ProcessResult {
-    var read_file = std.Io.Dir.cwd().openFile(io, path, .{}) catch return .{ .cnt = 0, .code = .source };
+    var read_file = std.Io.Dir.cwd().openFile(io, path, .{ .mode = .read_only, .allow_directory = false }) catch return .{ .cnt = 0, .code = .source };
     defer read_file.close(io);
-    var write_file = std.Io.Dir.cwd().openFile(io, path, .{ .mode = .read_write }) catch return .{ .cnt = 0, .code = .source };
+    var write_file = std.Io.Dir.cwd().openFile(io, path, .{ .mode = .write_only, .allow_directory = false }) catch return .{ .cnt = 0, .code = .source };
     defer write_file.close(io);
 
     var idx: u8 = 0b10101010;
@@ -309,7 +309,7 @@ test "xorot handles empty input and stable known vector" {
 }
 
 test "xorot matches reference across read buffer boundary and xor index wraparound" {
-    var boundary_input: [8192 + 37]u8 = undefined;
+    var boundary_input: [buffer_size + 37]u8 = undefined;
     for (&boundary_input, 0..) |*ch, i| ch.* = @truncate(i * 31 + 7);
     try expectXorotMatchesReference(std.testing.allocator, &boundary_input);
 
@@ -467,6 +467,25 @@ test "output file mode maps missing source and bounded large input" {
     const result = processOutputNoReport(std.testing.io, src, dst, false);
     try std.testing.expectEqual(@as(?ExitCode, null), result.code);
     try std.testing.expectEqual(input.len, result.cnt);
+}
+
+test "file modes reject directory paths as source inputs" {
+    const dir_path = try testPath(std.testing.allocator, "xorot-dir-source");
+    defer std.testing.allocator.free(dir_path);
+    std.Io.Dir.cwd().deleteTree(std.testing.io, dir_path) catch {};
+    try std.Io.Dir.cwd().createDirPath(std.testing.io, dir_path);
+
+    const dst_path = try destinationName(std.testing.allocator, dir_path);
+    defer std.testing.allocator.free(dst_path);
+    std.Io.Dir.cwd().deleteFile(std.testing.io, dst_path) catch {};
+
+    const output_result = processOutputNoReport(std.testing.io, dir_path, dst_path, false);
+    try std.testing.expectEqual(@as(?ExitCode, .source), output_result.code);
+    try std.testing.expectEqual(@as(usize, 0), output_result.cnt);
+
+    const in_place_result = processInPlaceNoReport(std.testing.io, dir_path);
+    try std.testing.expectEqual(@as(?ExitCode, .source), in_place_result.code);
+    try std.testing.expectEqual(@as(usize, 0), in_place_result.cnt);
 }
 
 test "in-place mode succeeds for empty and multi-chunk files" {
