@@ -1,0 +1,14 @@
+.{
+    .fingerprint = 0x8ebdc5355a673db1,
+    .name = .xorot,
+    .version = "0.3.0",
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "README.md",
+        "LICENSE",
+    },
+}
