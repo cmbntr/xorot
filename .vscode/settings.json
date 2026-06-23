@@ -1,0 +1,57 @@
+{
+  "editor.formatOnSave": true,
+  "editor.inlayHints.enabled": "on",
+  "editor.inlayHints.maximumLength": 120,
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "dprint.experimentalLsp": true,
+  "[json]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[snippets]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[nix]": {
+    "editor.defaultFormatter": "kamadorueda.alejandra",
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": false
+  },
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "opencode.json",
+        "config.json"
+      ],
+      "url": "https://models.dev/model-schema.json"
+    },
+    {
+      "fileMatch": [
+        "opencode.json",
+        "opencode.jsonc"
+      ],
+      "url": "https://opencode.ai/config.json"
+    },
+    {
+      "fileMatch": [
+        "tui.json",
+        "tui.jsonc"
+      ],
+      "url": "https://opencode.ai/tui.json"
+    }
+  ],
+  "alejandra.program": "alejandra"
+}

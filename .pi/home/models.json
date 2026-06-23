@@ -1,0 +1,24 @@
+{
+  "providers": {
+    "openai": {
+      "baseUrl": "http://aiproxy.unicorn-tegu.ts.net/v1",
+      "api": "openai-responses",
+      "apiKey": "sk-none"
+    },
+    "anthropic": {
+      "baseUrl": "http://aiproxy.unicorn-tegu.ts.net/",
+      "api": "anthropic-messages",
+      "apiKey": "sk-none"
+    },
+    "openrouter": {
+      "baseUrl": "http://aiproxy.unicorn-tegu.ts.net/v1",
+      "api": "openai-completions",
+      "apiKey": "sk-none",
+      "models": [
+        { "id": "openai/gpt-oss-120b:free" },
+        { "id": "google/gemma-4-31b-it:free" },
+        { "id": "nvidia/nemotron-3-super-120b-a12b:free" }
+      ]
+    }
+  }
+}

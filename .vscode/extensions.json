@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "ziglang.vscode-zig",
+    "dprint.dprint",
+    "kamadorueda.alejandra",
+    "redhat.vscode-yaml"
+  ]
+}

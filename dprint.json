@@ -1,0 +1,70 @@
+{
+  "newLineKind": "lf",
+  "lineWidth": 120,
+  "includes": [
+    "**/*.{ts,tsx,js,jsx,mjs,cjs}",
+    "**/*.{html,css,scss}",
+    "**/*.{json,jsonc}",
+    "**/*.{yml,yaml}",
+    "**/*.toml",
+    "**/*.md",
+    "**/Dockerfile",
+    "**/*.{csproj,fsproj,props,targets,xml}",
+    "**/*.code-snippets"
+  ],
+  "excludes": [
+    ".git/**",
+    ".trees/**",
+    ".prep/**",
+    "**/bin/**",
+    "**/obj/**",
+    "**/node_modules/**",
+    "**/.direnv/**",
+    "openspec/**",
+    ".**"
+  ],
+  "typescript": {
+    "lineWidth": 120,
+    "indentWidth": 2,
+    "useTabs": false,
+    "useBraces": "always",
+    "semiColons": "always",
+    "quoteStyle": "alwaysDouble",
+    "quoteProps": "asNeeded",
+    "trailingCommas": "onlyMultiLine",
+    "arrowFunction.useParentheses": "force"
+  },
+  "markup": {
+    "indentWidth": 2,
+    "printWidth": 120
+  },
+  "malva": {
+    "indentWidth": 2,
+    "printWidth": 120
+  },
+  "json": {
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "useTabs": false,
+    "trailingCommas": "jsonc",
+    "commentLine.forceSpaceAfterSlashes": false,
+    "associations": [
+      "**/*.{json,jsonc}",
+      "**/*.code-snippets"
+    ]
+  },
+  "yaml": {},
+  "toml": {},
+  "dockerfile": {},
+  "markdown": {},
+  "plugins": [
+    "https://plugins.dprint.dev/dockerfile-0.4.1.wasm",
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
+    "https://plugins.dprint.dev/json-0.22.0.wasm",
+    "https://plugins.dprint.dev/toml-0.7.0.wasm",
+    "https://plugins.dprint.dev/typescript-0.96.1.wasm",
+    "https://plugins.dprint.dev/markdown-0.22.1.wasm",
+    "https://plugins.dprint.dev/g-plane/markup_fmt-v0.27.3.wasm",
+    "https://plugins.dprint.dev/g-plane/malva-v0.16.0.wasm"
+  ]
+}
