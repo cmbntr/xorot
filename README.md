@@ -5,11 +5,51 @@
 (ROT ∘ XOR ∘ ROT) ∘ (ROT ∘ XOR ∘ ROT) =
  ROT ∘ XOR ∘ (ROT ∘ ROT) ∘ XOR ∘ ROT  =
  ROT ∘ XOR ∘     ID      ∘ XOR ∘ ROT  =
- ROT ∘ (XOR       ∘       XOR) ∘ ROT  = 
+ ROT ∘ (XOR       ∘       XOR) ∘ ROT  =
  ROT ∘           ID            ∘ ROT  =
 (ROT              ∘              ROT) =
                  ID
 ```
+
+## Usage
+
+### Flags
+
+- `-i`: process each file in place instead of writing a sibling output path.
+- `-f` or `---force`: allow output-file mode to overwrite an existing destination file.
+- `-s`: suppress `src=...,dst=...,cnt=...` stderr progress lines. Non-zero exits still emit `code=<n>,reason=<stable-reason>`.
+- `--`: stop option parsing so later dash-prefixed arguments are treated as filenames.
+
+### Pipe mode
+
+Run `xorot` with no file arguments to transform stdin to stdout.
+
+- stdout: transformed bytes only
+- stderr on success: silent by default
+- stderr on failure: exactly one line, `code=<n>,reason=<stable-reason>`
+
+### File copy mode
+
+Run `xorot <path>` to write a sibling output file.
+
+- multiple file arguments are allowed; they are processed left to right in argv order, one file operation per argument
+- default destination: append `.xorot`, or strip that suffix when it is already present
+- before streaming transformed bytes, copy mode preallocates the destination file to the source file size
+- default stderr on success: `src=<source>,dst=<destination>,cnt=<count>`
+- stderr on failure: progress line first when source/destination context exists, then `code=<n>,reason=<stable-reason>`
+- `-f` or `---force` permits overwriting the destination file
+- `-s` suppresses only the progress line
+
+### File inplace mode
+
+Run `xorot -i <path>` to transform a file in place.
+
+- multiple file arguments are allowed; they are processed left to right in argv order, one file operation per argument
+- destination path remains the source path
+- default stderr on success: `src=<path>,dst=<path>,cnt=<count>`
+- stderr on failure: progress line first when available, then `code=<n>,reason=<stable-reason>`
+- `-f` and `---force` are accepted but have no effect in in-place mode
+- `-s` suppresses only the progress line
 
 ## Example
 

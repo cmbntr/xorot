@@ -30,30 +30,36 @@ pub fn main(init: std.process.Init) !void {
     defer freeArgs(init.gpa, args);
 
     const cli = parseArgs(args[1..]) catch |err| switch (err) {
-        error.UnknownFlag => std.process.exit(@intFromEnum(ExitCode.other)),
+        error.UnknownFlag => exitWithFailureReason(init.io, .other),
     };
 
     if (cli.paths.len == 0) {
         var stdin_reader = std.Io.File.stdin().reader(init.io, &.{});
         var stdout_writer = std.Io.File.stdout().writer(init.io, &.{});
-        const cnt = try processCore(&stdin_reader.interface, &stdout_writer.interface);
+        _ = try processCore(&stdin_reader.interface, &stdout_writer.interface);
         try stdout_writer.flush();
-        if (!cli.silent) {
-            var stderr_writer = std.Io.File.stderr().writer(init.io, &.{});
-            try report(&stderr_writer.interface, "-", "-", cnt);
-            try stderr_writer.flush();
-        }
         return;
     }
 
     for (cli.paths) |path| {
-        const result = switch (cli.mode) {
-            .output => try processOutput(init.gpa, init.io, path, cli.force, cli.silent),
-            .in_place => try processInPlace(init.io, path, cli.silent),
-        };
+        switch (cli.mode) {
+            .output => {
+                const dst_path = try destinationName(init.gpa, path);
+                defer init.gpa.free(dst_path);
 
-        if (result.code) |code| std.process.exit(@intFromEnum(code));
+                const result = processOutputNoReport(init.io, path, dst_path, cli.force);
+                try reportProcessResult(init.io, shouldReportProgress(true, cli.silent), path, dst_path, result);
+            },
+            .in_place => {
+                const result = processInPlaceNoReport(init.io, path);
+                try reportProcessResult(init.io, shouldReportProgress(true, cli.silent), path, path, result);
+            },
+        }
     }
+}
+
+fn shouldReportProgress(is_file_mode: bool, silent: bool) bool {
+    return is_file_mode and !silent;
 }
 
 fn parseArgs(args: []const []const u8) !Cli {
@@ -100,19 +106,6 @@ fn freeArgs(allocator: std.mem.Allocator, args: []const []const u8) void {
     allocator.free(args);
 }
 
-fn processOutput(allocator: std.mem.Allocator, io: std.Io, src_path: []const u8, force: bool, silent: bool) !ProcessResult {
-    const dst_path = try destinationName(allocator, src_path);
-    defer allocator.free(dst_path);
-
-    const result = processOutputNoReport(io, src_path, dst_path, force);
-    if (!silent) {
-        var stderr_writer = std.Io.File.stderr().writer(io, &.{});
-        try report(&stderr_writer.interface, src_path, dst_path, result.cnt);
-        try stderr_writer.flush();
-    }
-    return result;
-}
-
 fn processOutputNoReport(io: std.Io, src_path: []const u8, dst_path: []const u8, force: bool) ProcessResult {
     var src = std.Io.Dir.cwd().openFile(io, src_path, .{ .mode = .read_only, .allow_directory = false }) catch return .{ .cnt = 0, .code = .source };
     defer src.close(io);
@@ -139,16 +132,6 @@ fn processOutputNoReport(io: std.Io, src_path: []const u8, dst_path: []const u8,
     };
     dst_writer.flush() catch return .{ .cnt = cnt, .code = .other };
     return .{ .cnt = cnt };
-}
-
-fn processInPlace(io: std.Io, path: []const u8, silent: bool) !ProcessResult {
-    const result = processInPlaceNoReport(io, path);
-    if (!silent) {
-        var stderr_writer = std.Io.File.stderr().writer(io, &.{});
-        try report(&stderr_writer.interface, path, path, result.cnt);
-        try stderr_writer.flush();
-    }
-    return result;
 }
 
 fn processInPlaceNoReport(io: std.Io, path: []const u8) ProcessResult {
@@ -181,6 +164,39 @@ fn destinationName(allocator: std.mem.Allocator, src_path: []const u8) ![]u8 {
 
 fn report(out: *std.Io.Writer, src: []const u8, dst: []const u8, cnt: usize) !void {
     try out.print("src={s},dst={s},cnt={}\n", .{ src, dst, cnt });
+}
+
+fn failureReason(code: ExitCode) []const u8 {
+    return switch (code) {
+        .source => "source-read-failure",
+        .destination_exists => "destination-exists",
+        .allocation => "destination-allocation-failure",
+        .other => "other-io-or-usage-failure",
+    };
+}
+
+fn reportFailure(out: *std.Io.Writer, code: ExitCode) !void {
+    try out.print("code={},reason={s}\n", .{ @intFromEnum(code), failureReason(code) });
+}
+
+fn writeProcessResult(out: *std.Io.Writer, emit_progress: bool, src: []const u8, dst: []const u8, result: ProcessResult) !void {
+    if (emit_progress) try report(out, src, dst, result.cnt);
+    if (result.code) |code| try reportFailure(out, code);
+}
+
+fn reportProcessResult(io: std.Io, emit_progress: bool, src: []const u8, dst: []const u8, result: ProcessResult) !void {
+    var stderr_writer = std.Io.File.stderr().writer(io, &.{});
+    try writeProcessResult(&stderr_writer.interface, emit_progress, src, dst, result);
+    try stderr_writer.flush();
+
+    if (result.code) |code| std.process.exit(@intFromEnum(code));
+}
+
+fn exitWithFailureReason(io: std.Io, code: ExitCode) noreturn {
+    var stderr_writer = std.Io.File.stderr().writer(io, &.{});
+    reportFailure(&stderr_writer.interface, code) catch {};
+    stderr_writer.flush() catch {};
+    std.process.exit(@intFromEnum(code));
 }
 
 fn processCore(in: *std.Io.Reader, out: *std.Io.Writer) !usize {
@@ -392,12 +408,19 @@ test "file modes fuzz-style generated input stress" {
     }
 }
 
-test "parse cli modes flags marker and unknown flags" {
+test "parse cli modes flags marker silent and unknown flags" {
     try expectParse(&.{}, .output, false, false, &.{});
     try expectParse(&.{"input"}, .output, false, false, &.{"input"});
     try expectParse(&.{ "-i", "-f", "-s", "a", "b" }, .in_place, true, true, &.{ "a", "b" });
     try expectParse(&.{ "---force", "--", "-named" }, .output, true, false, &.{"-named"});
     try std.testing.expectError(error.UnknownFlag, parseArgs(&.{ "--bad", "file" }));
+}
+
+test "progress reporting defaults by mode" {
+    try std.testing.expect(!shouldReportProgress(false, false));
+    try std.testing.expect(!shouldReportProgress(false, true));
+    try std.testing.expect(shouldReportProgress(true, false));
+    try std.testing.expect(!shouldReportProgress(true, true));
 }
 
 test "destination naming appends and strips suffix" {
@@ -529,4 +552,32 @@ test "process core returns count and report format" {
     var report_writer: std.Io.Writer = .fixed(&report_buf);
     try report(&report_writer, "-", "-", cnt);
     try std.testing.expectEqualStrings("src=-,dst=-,cnt=3\n", report_writer.buffered());
+}
+
+test "failure reasons and report ordering are stable" {
+    try std.testing.expectEqualStrings("source-read-failure", failureReason(.source));
+    try std.testing.expectEqualStrings("destination-exists", failureReason(.destination_exists));
+    try std.testing.expectEqualStrings("destination-allocation-failure", failureReason(.allocation));
+    try std.testing.expectEqualStrings("other-io-or-usage-failure", failureReason(.other));
+
+    var failure_buf: [160]u8 = undefined;
+    var failure_writer: std.Io.Writer = .fixed(&failure_buf);
+    try writeProcessResult(&failure_writer, true, "src", "dst", .{ .cnt = 7, .code = .other });
+    try std.testing.expectEqualStrings(
+        "src=src,dst=dst,cnt=7\ncode=9,reason=other-io-or-usage-failure\n",
+        failure_writer.buffered(),
+    );
+
+    var silent_failure_buf: [96]u8 = undefined;
+    var silent_failure_writer: std.Io.Writer = .fixed(&silent_failure_buf);
+    try writeProcessResult(&silent_failure_writer, false, "src", "dst", .{ .cnt = 0, .code = .source });
+    try std.testing.expectEqualStrings(
+        "code=1,reason=source-read-failure\n",
+        silent_failure_writer.buffered(),
+    );
+
+    var success_buf: [64]u8 = undefined;
+    var success_writer: std.Io.Writer = .fixed(&success_buf);
+    try writeProcessResult(&success_writer, true, "src", "dst", .{ .cnt = 5 });
+    try std.testing.expectEqualStrings("src=src,dst=dst,cnt=5\n", success_writer.buffered());
 }

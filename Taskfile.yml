@@ -33,10 +33,41 @@ tasks:
     cmds:
       - zig build test
 
+  test:fuzz:
+    desc: "Run Zig fuzz tests"
+    cmds:
+      - zig build fuzz-test -Dxorot_fuzz_iterations=2048
+
   test:smoke:
     desc: "Smoke test stdin-to-stdout transform"
     cmds:
       - test "$(printf 'Ab0' | zig build run | xxd -p)" = "e4c499"
+
+  test:cli-reporting:
+    desc: "Smoke test CLI stderr reporting"
+    cmds:
+      - cmd: |
+          zig build >/dev/null
+          tmpdir=$(mktemp -d)
+          trap 'rm -rf "$tmpdir"' EXIT
+          missing="$tmpdir/missing"
+          bin="./zig-out/bin/xorot"
+
+          if "$bin" "$missing" >"$tmpdir/stdout1" 2>"$tmpdir/stderr1"; then
+            exit 1
+          fi
+          test "$(tr -d '\r' < "$tmpdir/stderr1")" = "src=$missing,dst=$missing.xorot,cnt=0
+          code=1,reason=source-read-failure"
+
+          if "$bin" -s "$missing" >"$tmpdir/stdout2" 2>"$tmpdir/stderr2"; then
+            exit 1
+          fi
+          test "$(tr -d '\r' < "$tmpdir/stderr2")" = "code=1,reason=source-read-failure"
+
+          if "$bin" --bad >"$tmpdir/stdout3" 2>"$tmpdir/stderr3"; then
+            exit 1
+          fi
+          test "$(tr -d '\r' < "$tmpdir/stderr3")" = "code=9,reason=other-io-or-usage-failure"
 
   test:wasi:
     desc: "Smoke test prebuilt WASI artifact with wasmtime; skips if missing"
@@ -65,9 +96,10 @@ tasks:
     desc: "Run all tests"
     cmds:
       - task: test:smoke
+      - task: test:cli-reporting
       - task: test:wasi
       - task: test
-      - zig build fuzz-test -Dxorot_fuzz_iterations=2048
+      - task: test:fuzz
 
   fmt:
     desc: "Formats the code"
