@@ -5,6 +5,18 @@ vars:
   PROJECT: xorot
   OPTIMIZE: ReleaseSmall
   OPENSPEC_VERSION: "1.4.1"
+  RELEASE_TARGETS_LOCAL: |
+    x86_64-linux-musl
+    aarch64-linux-musl
+    x86_64-windows-msvc
+    wasm32-wasi-none
+    x86_64-macos
+    aarch64-macos
+  RELEASE_TARGETS_GITHUB_ACTIONS: |
+    x86_64-linux-musl
+    aarch64-linux-musl
+    x86_64-windows-msvc
+    wasm32-wasi-none
 
 tasks:
   build:
@@ -12,16 +24,12 @@ tasks:
       - default
     cmds:
       - cmd: |
-          zig build install -Doptimize={{.OPTIMIZE}} -Dtarget={{.ITEM}} -p release/{{.PROJECT}}-{{.ITEM}}
-          cd release && zip -r {{.PROJECT}}-{{.ITEM}}.zip {{.PROJECT}}-{{.ITEM}}/
-
-        for:
-          - x86_64-linux-musl
-          - aarch64-linux-musl
-          - x86_64-windows-msvc
-          - wasm32-wasi-none
-          - x86_64-macos
-          - aarch64-macos
+          targets='{{if eq (.GITHUB_ACTIONS | default "") "true"}}{{.RELEASE_TARGETS_GITHUB_ACTIONS}}{{else}}{{.RELEASE_TARGETS_LOCAL}}{{end}}'
+          printf '%s\n' "$targets" | while IFS= read -r target; do
+            [ -n "$target" ] || continue
+            zig build install -Doptimize={{.OPTIMIZE}} -Dtarget="$target" -p "release/{{.PROJECT}}-$target"
+            (cd release && zip -r "{{.PROJECT}}-$target.zip" "{{.PROJECT}}-$target/")
+          done
 
   clean:
     desc: "Remove generated Zig build/test artefacts"
