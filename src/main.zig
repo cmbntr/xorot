@@ -34,8 +34,8 @@ pub fn main(init: std.process.Init) !void {
     };
 
     if (cli.paths.len == 0) {
-        var stdin_reader = std.Io.File.stdin().reader(init.io, &.{});
-        var stdout_writer = std.Io.File.stdout().writer(init.io, &.{});
+        var stdin_reader = std.Io.File.stdin().readerStreaming(init.io, &.{});
+        var stdout_writer = std.Io.File.stdout().writerStreaming(init.io, &.{});
         _ = try processCore(&stdin_reader.interface, &stdout_writer.interface);
         try stdout_writer.flush();
         return;
