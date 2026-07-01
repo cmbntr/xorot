@@ -219,8 +219,42 @@ fn xorot(in: *std.Io.Reader, out: *std.Io.Writer) !void {
     _ = try processCore(in, out);
 }
 
+const simd_width = 16;
+const ByteVec = @Vector(simd_width, u8);
+const BoolVec = @Vector(simd_width, bool);
+const idx_offsets: ByteVec = .{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+
+inline fn betweenVec(ch: ByteVec, min: u8, max: u8) BoolVec {
+    return (ch >= @as(ByteVec, @splat(min))) & (ch <= @as(ByteVec, @splat(max)));
+}
+
+inline fn rotVec(ch: ByteVec) ByteVec {
+    const plus_13 = ch +% @as(ByteVec, @splat(13));
+    const minus_13 = ch -% @as(ByteVec, @splat(13));
+    const plus_5 = ch +% @as(ByteVec, @splat(5));
+    const minus_5 = ch -% @as(ByteVec, @splat(5));
+
+    var result = ch;
+    result = @select(u8, betweenVec(ch, 'A', 'M') | betweenVec(ch, 'a', 'm'), plus_13, result);
+    result = @select(u8, betweenVec(ch, 'N', 'Z') | betweenVec(ch, 'n', 'z'), minus_13, result);
+    result = @select(u8, betweenVec(ch, '0', '4'), plus_5, result);
+    result = @select(u8, betweenVec(ch, '5', '9'), minus_5, result);
+    return result;
+}
+
+inline fn transformVec(ch: ByteVec, idx: u8) ByteVec {
+    return rotVec(rotVec(ch) ^ (@as(ByteVec, @splat(idx)) +% idx_offsets));
+}
+
 fn transformSlice(bytes: []u8, idx: *u8) void {
-    for (bytes) |*byte| {
+    var offset: usize = 0;
+    while (offset + simd_width <= bytes.len) : (offset += simd_width) {
+        const input: ByteVec = @bitCast(bytes[offset..][0..simd_width].*);
+        bytes[offset..][0..simd_width].* = @bitCast(transformVec(input, idx.*));
+        idx.* +%= simd_width;
+    }
+
+    for (bytes[offset..]) |*byte| {
         byte.* = rot(rot(byte.*) ^ idx.*);
         idx.* = if (idx.* == 0xFF) 0 else idx.* + 1;
     }
@@ -332,6 +366,23 @@ test "xorot matches reference across read buffer boundary and xor index wraparou
     var wrap_input: [300]u8 = undefined;
     for (&wrap_input, 0..) |*ch, i| ch.* = @truncate(i);
     try expectXorotMatchesReference(std.testing.allocator, &wrap_input);
+}
+
+test "xorot matches reference around simd chunk boundaries" {
+    var input: [simd_width * 2 + 1]u8 = undefined;
+    for (&input, 0..) |*ch, i| ch.* = @truncate(i * 17 + 3);
+
+    try expectXorotMatchesReference(std.testing.allocator, input[0 .. simd_width - 1]);
+    try expectXorotMatchesReference(std.testing.allocator, input[0..simd_width]);
+    try expectXorotMatchesReference(std.testing.allocator, input[0 .. simd_width + 1]);
+    try expectXorotMatchesReference(std.testing.allocator, input[0 .. simd_width * 2 + 1]);
+}
+
+test "xorot simd chunks preserve xor index wraparound" {
+    var input: [simd_width * 20 + 3]u8 = undefined;
+    for (&input, 0..) |*ch, i| ch.* = @truncate(i * 29 + 11);
+
+    try expectXorotMatchesReference(std.testing.allocator, &input);
 }
 
 test "xorot randomized inputs preserve length and match reference" {
